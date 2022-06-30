@@ -6,12 +6,12 @@ package com.skca.panoptes.hardware;
 
 import android.content.Context;
 import android.hardware.*;
+import com.skca.panoptes.hardware.sensors.SensorWrapper;
 import com.skca.panoptes.hardware.sensors.SensorsInfo;
 import com.skca.panoptes.hardware.specification.DeviceInfo;
+import com.skca.panoptes.helper.Recorder;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class DataManager {
 
@@ -43,22 +43,28 @@ public class DataManager {
 
     public void loadSensors() {
         List<Sensor> deviceSensors = sensorManager.getSensorList(Sensor.TYPE_ALL);
+        Map<String, SensorWrapper> sensorMap = new HashMap<>();
 
         for (Sensor s : deviceSensors) {
             // The name is guaranteed to be unique for a particular sensor type.
+            sensorMap.put("[" + s.getStringType() + "] " + s.getName(), new SensorWrapper(s));
+        }
 
-            sensorManager.registerListener(new SensorEventListener() {
-                @Override
-                public void onSensorChanged(SensorEvent event) {
-                    SensorsInfo.updateSensorValues("[" + event.sensor.getStringType() + "] " + event.sensor.getName(), valueFormatter(event.values));
-                }
+        SensorsInfo.loadSensors(sensorMap);
+    }
 
-                @Override
-                public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-            }, s, SensorManager.SENSOR_DELAY_NORMAL);
+    public void listenSensors(Recorder r) {
+        for (SensorWrapper e : SensorsInfo.getSensorMap().values()) {
+            if (!e.listen) continue;
+            sensorManager.registerListener(r, e.getBaseSensor(), SensorManager.SENSOR_DELAY_NORMAL);
         }
     }
 
+    public void releaseSensors(Recorder r) {
+        for (SensorWrapper e : SensorsInfo.getSensorMap().values()) {
+            sensorManager.unregisterListener(r, e.getBaseSensor());
+        }
+    }
 
     private void loadDeviceInfo(Context context) {
         deviceInfo = new DeviceInfo(context);
@@ -68,7 +74,7 @@ public class DataManager {
         this.sensorManager = (SensorManager) s.getSystemService(Context.SENSOR_SERVICE);
     }
 
-    private String valueFormatter(float[] fs) {
+    public String valueFormatter(float[] fs) {
         StringBuilder b = new StringBuilder();
         for (float f : fs) {
             b.append(f + ", ");

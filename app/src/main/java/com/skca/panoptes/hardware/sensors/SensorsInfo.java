@@ -1,6 +1,6 @@
 package com.skca.panoptes.hardware.sensors;
 
-import android.util.Log;
+import android.hardware.Sensor;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,18 +12,27 @@ public class SensorsInfo {
 
     private static final ReentrantLock l = new ReentrantLock();
 
-    private static Map<String, String> sensorValues = new HashMap<>();
+    private static Map<String, SensorWrapper> sensorsMap = new HashMap<>();
 
+    public static synchronized void loadSensors(Map<String, SensorWrapper> m) {
+        l.lock();
+        sensorsMap = m;
+        l.unlock();
+    }
+
+    public static Map<String, SensorWrapper> getSensorMap() {
+        return sensorsMap;
+    }
 
     //TODO: independent parser will apply to each sensor types.
     public static synchronized String readSensorValues(boolean readValues) {
         StringBuilder b = new StringBuilder();
         l.lock();
-
-        Set<Map.Entry<String, String>> s = sensorValues.entrySet();
-        for (Map.Entry<String, String> e : s) {
+        Set<Map.Entry<String, SensorWrapper>> s = sensorsMap.entrySet();
+        for (Map.Entry<String, SensorWrapper> e : s) {
             b.append(e.getKey()).append("\n");
-            if (readValues) b.append(e.getValue());
+            SensorWrapper sensorWrapper = e.getValue();
+            if (readValues && sensorWrapper.listen) b.append(sensorWrapper.getValue());
             b.append("\n\n");
         }
         l.unlock();
@@ -31,11 +40,11 @@ public class SensorsInfo {
         return b.toString();
     }
 
-    public static synchronized void updateSensorValues(String key, String value) {
+    public static synchronized void updateSensorValues(String key, Sensor s, String value) {
         try {
-            if (l.tryLock(50, TimeUnit.MILLISECONDS))
-                sensorValues.put(key, value);
-//                Log.i("SensorMonitor", key + value);
+            if (l.tryLock(50, TimeUnit.MILLISECONDS)) {
+                sensorsMap.get(key).updateValue(value);
+            }
         }
         catch (InterruptedException ignore) { }
         finally {

@@ -6,6 +6,7 @@ import com.google.android.material.tabs.TabLayout;
 import androidx.viewpager.widget.ViewPager;
 import androidx.appcompat.app.AppCompatActivity;
 import com.skca.panoptes.hardware.DataManager;
+import com.skca.panoptes.helper.Recorder;
 import com.skca.panoptes.ui.main.SectionsPagerAdapter;
 import com.skca.panoptes.databinding.ActivityMainBinding;
 
@@ -38,6 +39,7 @@ public class MainActivity extends AppCompatActivity
         DataManager d = DataManager.get();
         d.init(this);
         d.loadSensors();
+        new Recorder().start();
 
 
         fab.setOnClickListener(view -> {
