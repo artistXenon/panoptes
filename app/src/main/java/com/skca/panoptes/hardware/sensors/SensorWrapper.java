@@ -6,7 +6,7 @@ public class SensorWrapper {
 
     final private Sensor sensorObject;
 
-    public boolean listen = false;
+    public boolean listen = true;
     private String newValue = "";
 
     public SensorWrapper(Sensor s) {
