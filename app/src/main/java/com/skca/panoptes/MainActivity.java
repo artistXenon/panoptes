@@ -39,7 +39,8 @@ public class MainActivity extends AppCompatActivity
         DataManager d = DataManager.get();
         d.init(this);
         d.loadSensors();
-        new Recorder().start();
+        Recorder r = new Recorder();
+        r.start(this);
 
 
         fab.setOnClickListener(view -> {
