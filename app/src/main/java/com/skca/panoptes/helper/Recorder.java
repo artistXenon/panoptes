@@ -36,7 +36,7 @@ public class Recorder implements SensorEventListener {
         if (started) throw new IllegalStateException("Recorder: Already started.");
         started = true;
         startDateTime = System.currentTimeMillis();
-
+/*
         String filename = startDateTime + ".txt";
         try {
             fileWriter = context.openFileOutput(filename, Context.MODE_PRIVATE);
@@ -71,6 +71,7 @@ public class Recorder implements SensorEventListener {
         catch (IOException ignore) {}
 
         recorder.start();
+        */
         resume();
     }
 
@@ -110,6 +111,10 @@ public class Recorder implements SensorEventListener {
         Sensor sensor = event.sensor;
         String sensorKey = "[" + sensor.getStringType() + "] " + sensor.getName();
         String formattedValue = DataManager.get().valueFormatter(event.values); //TODO: sensor type formatter.
+        Log.i("LOG-SENSOR", System.currentTimeMillis() + "/ " + sensorKey + " : " + formattedValue);
+
+        /*
+
         SensorsInfo.updateSensorValues(sensorKey, sensor, formattedValue);
         try {
             pipeWriter.write(
@@ -118,6 +123,7 @@ public class Recorder implements SensorEventListener {
             );
         }
         catch (IOException ignore) {}
+        */
     }
 
     @Override

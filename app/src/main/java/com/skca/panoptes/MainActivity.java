@@ -41,13 +41,14 @@ public class MainActivity extends AppCompatActivity
         tabs.setupWithViewPager(viewPager);
         FloatingActionButton fab = binding.fab;
 
-/*
+
         DataManager d = DataManager.get();
         d.init(this);
         d.loadSensors();
         Recorder r = new Recorder();
         r.start(this);
-*/
+
+
         GoogleApiCallbacks callbacks = new GoogleApiCallbacks();
         MeasurementProvider mMeasurementProvider =
                 new MeasurementProvider(

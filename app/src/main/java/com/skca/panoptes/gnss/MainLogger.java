@@ -262,7 +262,7 @@ public class MainLogger implements MeasurementListener {
 
     private void logText(String tag, String text, int color) {
         //TODO: LOG TEXT
-        Log.i("MAINLOG", text);
+        Log.i("LOG-GNSS", text);
     }
 
     private String locationStatusToString(int status) {
