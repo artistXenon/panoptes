@@ -18,6 +18,7 @@ public class PageViewModel extends ViewModel {
     private LiveData<String> mText = Transformations.map(mIndex, new Function<Long, String>() {
         @Override
         public String apply(Long input) {
+            /*
             DeviceInfo d = DataManager.get().getDeviceInfo();
             switch (index) {
                 case 1:
@@ -29,6 +30,8 @@ public class PageViewModel extends ViewModel {
 
 
             return "Hello world from section: " + input;
+            */
+            return "Not supported";
         }
     });
 

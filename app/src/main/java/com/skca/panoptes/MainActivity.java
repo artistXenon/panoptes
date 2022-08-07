@@ -1,15 +1,21 @@
 package com.skca.panoptes;
 
 import android.os.Bundle;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.ActivityRecognition;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
 import androidx.viewpager.widget.ViewPager;
 import androidx.appcompat.app.AppCompatActivity;
+import com.skca.panoptes.gnss.GoogleApiCallbacks;
+import com.skca.panoptes.gnss.MainLogger;
+import com.skca.panoptes.gnss.MeasurementProvider;
 import com.skca.panoptes.hardware.DataManager;
 import com.skca.panoptes.helper.Recorder;
 import com.skca.panoptes.ui.main.SectionsPagerAdapter;
 import com.skca.panoptes.databinding.ActivityMainBinding;
-
+import org.jetbrains.annotations.NotNull;
 
 
 public class MainActivity extends AppCompatActivity
@@ -35,13 +41,26 @@ public class MainActivity extends AppCompatActivity
         tabs.setupWithViewPager(viewPager);
         FloatingActionButton fab = binding.fab;
 
-
+/*
         DataManager d = DataManager.get();
         d.init(this);
         d.loadSensors();
         Recorder r = new Recorder();
         r.start(this);
-
+*/
+        GoogleApiCallbacks callbacks = new GoogleApiCallbacks();
+        MeasurementProvider mMeasurementProvider =
+                new MeasurementProvider(
+                        getApplicationContext(),
+                        new GoogleApiClient.Builder(this)
+                                .enableAutoManage(this, callbacks)
+                                .addConnectionCallbacks(callbacks)
+                                .addOnConnectionFailedListener(callbacks)
+                                .addApi(ActivityRecognition.API).addApi(LocationServices.API)
+                                .build(),
+                        new MainLogger()
+                        );
+        mMeasurementProvider.registerAll();
 
         fab.setOnClickListener(view -> {
             showValues = !showValues;
