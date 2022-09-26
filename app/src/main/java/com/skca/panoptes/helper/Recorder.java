@@ -4,21 +4,28 @@ import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
+import android.os.Environment;
 import android.util.Log;
+import android.widget.Toast;
+import com.google.android.material.snackbar.Snackbar;
+import com.skca.panoptes.MainActivity;
+import com.skca.panoptes.gnss.MeasurementProvider;
 import com.skca.panoptes.hardware.DataManager;
 import com.skca.panoptes.hardware.sensors.SensorsInfo;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Recorder implements SensorEventListener {
 
     // make internal file. when recording starts, stream to file.
 
-    private boolean started = false, stopped = false, paused = true;
 
-    private String name;
-    private long startDateTime;
+    public Map<String, Long> counter = new HashMap<>();
+    private MainActivity mainActivity;
+    private String fileName;
 
     private Thread recorder;
 
@@ -31,15 +38,24 @@ public class Recorder implements SensorEventListener {
 
     private OutputStream externalListener;
 
+    private StringBuilder stringBuilder;
+    public boolean isRecording = false;
+
+    public Recorder(MainActivity mainActivity) {
+        this.mainActivity = mainActivity;
+    }
+
 
     public void start(Context context) {
-        if (started) throw new IllegalStateException("Recorder: Already started.");
-        started = true;
-        startDateTime = System.currentTimeMillis();
-/*
-        String filename = startDateTime + ".txt";
+        stringBuilder = new StringBuilder();
+        counter = new HashMap<>();
+
         try {
-            fileWriter = context.openFileOutput(filename, Context.MODE_PRIVATE);
+            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            fileName = "SENSOR_LOG" + System.currentTimeMillis() + ".txt";
+            File target = new File(dir, fileName);
+
+            fileWriter = new FileOutputStream(target);
             pipeWriter = new PipedOutputStream();
             pipeReader = new PipedInputStream();
             pipeWriter.connect(pipeReader);
@@ -62,43 +78,50 @@ public class Recorder implements SensorEventListener {
                             fileWriter.close();
                             return;
                         }
-                        else Thread.sleep(100);
+                        else Thread.sleep(50);
                     }
                 }
                 catch (IOException | InterruptedException ignore) {}
             });
         }
-        catch (IOException ignore) {}
+        catch (IOException ignore) {
+            Log.e("IOE", ignore.getMessage(), ignore);
+        }
 
         recorder.start();
-        */
+
+        try {
+            pipeWriter. write(DataManager.get().getDeviceInfo().toString().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ignore) {}
         resume();
     }
 
     public void stop() {
-        if (!started) throw new IllegalStateException("Recorder: Not started.");
-        if (stopped) throw new IllegalStateException("Recorder: Already stopped.");
         pause();
-        stopped = true;
+        Toast.makeText(mainActivity, "Saved as Downloads/" + fileName, Toast.LENGTH_LONG).show();
+
         recorderControlToken = 2;
     }
 
     public void pause() {
-        if (!started) throw new IllegalStateException("Recorder: Not started.");
-        if (stopped) throw new IllegalStateException("Recorder: Already stopped.");
-        if (paused) return;
-        paused = true;
         recorderControlToken = 1;
         DataManager.get().releaseSensors(this);
+        MeasurementProvider measurementProvider = MeasurementProvider.get();
+        measurementProvider.unregisterLocation();
+        measurementProvider.unregisterNmea();
+
+        isRecording = false;
     }
 
     public void resume() {
-        if (!started) throw new IllegalStateException("Recorder: Not started.");
-        if (stopped) throw new IllegalStateException("Recorder: Already stopped.");
-        if (!paused) return;
-        paused = false;
         recorderControlToken = 0;
         DataManager.get().listenSensors(this);
+        MeasurementProvider measurementProvider = MeasurementProvider.get();
+        if (measurementProvider.listen) {
+            measurementProvider.registerLocation();
+            measurementProvider.registerNmea();
+        }
+        isRecording = true;
     }
 
     public void setExternalListener(OutputStream listener) {
@@ -106,12 +129,25 @@ public class Recorder implements SensorEventListener {
         externalListener = listener;
     }
 
+    public void record(String log) {
+        try {
+            pipeWriter.write((log + "\n").getBytes(StandardCharsets.UTF_8));
+        }
+        catch (IOException ignore) {}
+    }
+
+    public String getLog() {
+        return stringBuilder == null ? "" : stringBuilder.toString();
+    }
+
     @Override
     public void onSensorChanged(SensorEvent event) {
         Sensor sensor = event.sensor;
-        String sensorKey = "[" + sensor.getStringType() + "] " + sensor.getName();
+        String type = sensor.getStringType();
+        String sensorKey = "[" + type.substring(15) + "] " + sensor.getName();
+        counter.put(sensorKey, counter.getOrDefault(sensorKey, 0L) + 1);
         String formattedValue = DataManager.get().valueFormatter(event.values); //TODO: sensor type formatter.
-        Log.i("LOG-SENSOR", System.currentTimeMillis() + "/ " + sensorKey + " : " + formattedValue);
+        record(System.currentTimeMillis() + "/ " + sensorKey + " : " + formattedValue);
 
         /*
 

@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.skca.panoptes.hardware.DataManager;
 
 
 /**
@@ -24,11 +25,17 @@ import com.google.android.gms.location.LocationServices;
  */
 public class MeasurementProvider {
 
+    private static MeasurementProvider _instance;
     public static final String TAG = "MeasurementProvider";
-
     private static final long LOCATION_RATE_GPS_MS = TimeUnit.SECONDS.toMillis(1L);
     private static final long LOCATION_RATE_NETWORK_MS = TimeUnit.SECONDS.toMillis(60L);
 
+    public static synchronized MeasurementProvider get() { // Thread safe singleton class.
+        if (_instance == null) throw new NullPointerException("Not initialized");
+        return _instance;
+    }
+
+    public boolean listen = false;
     private boolean mLogLocations = true;
     private boolean mLogNavigationMessages = true;
     private boolean mLogMeasurements = true;
@@ -40,7 +47,7 @@ public class MeasurementProvider {
     private boolean firstTime = true;
 
     GoogleApiClient mGoogleApiClient;
-    private final List<MeasurementListener> mListeners;
+    public final MainLogger mListeners;
 
     private final LocationManager mLocationManager;
     private final android.location.LocationListener mLocationListener =
@@ -49,18 +56,14 @@ public class MeasurementProvider {
                 @Override
                 public void onProviderEnabled(String provider) {
                     if (mLogLocations) {
-                        for (MeasurementListener listener : mListeners) {
-                            listener.onProviderEnabled(provider);
-                        }
+                        mListeners.onProviderEnabled(provider);
                     }
                 }
 
                 @Override
                 public void onProviderDisabled(String provider) {
                     if (mLogLocations) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onProviderDisabled(provider);
-                        }
+                        mListeners.onProviderDisabled(provider);
                     }
                 }
 
@@ -68,27 +71,21 @@ public class MeasurementProvider {
                 public void onLocationChanged(Location location) {
                     if (firstTime && location.getProvider().equals(LocationManager.GPS_PROVIDER)) {
                         if (mLogLocations) {
-                            for (MeasurementListener logger : mListeners) {
-                                firstLocationTimeNanos = SystemClock.elapsedRealtimeNanos();
-                                ttff = firstLocationTimeNanos - registrationTimeNanos;
-                                logger.onTTFFReceived(ttff);
-                            }
+                            firstLocationTimeNanos = SystemClock.elapsedRealtimeNanos();
+                            ttff = firstLocationTimeNanos - registrationTimeNanos;
+                            mListeners.onTTFFReceived(ttff);
                         }
                         firstTime = false;
                     }
                     if (mLogLocations) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onLocationChanged(location);
-                        }
+                        mListeners.onLocationChanged(location);
                     }
                 }
 
                 @Override
                 public void onStatusChanged(String provider, int status, Bundle extras) {
                     if (mLogLocations) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onLocationStatusChanged(provider, status, extras);
-                        }
+                        mListeners.onLocationStatusChanged(provider, status, extras);
                     }
                 }
             };
@@ -100,18 +97,14 @@ public class MeasurementProvider {
                 public void onLocationChanged(Location location) {
                     if (firstTime && location.getProvider().equals(LocationManager.GPS_PROVIDER)) {
                         if (mLogLocations) {
-                            for (MeasurementListener logger : mListeners) {
                                 firstLocationTimeNanos = SystemClock.elapsedRealtimeNanos();
                                 ttff = firstLocationTimeNanos - registrationTimeNanos;
-                                logger.onTTFFReceived(ttff);
-                            }
+                            mListeners.onTTFFReceived(ttff);
                         }
                         firstTime = false;
                     }
                     if (mLogLocations) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onLocationChanged(location);
-                        }
+                        mListeners.onLocationChanged(location);
                     }
                 }
             };
@@ -121,18 +114,14 @@ public class MeasurementProvider {
                 @Override
                 public void onGnssMeasurementsReceived(GnssMeasurementsEvent event) {
                     if (mLogMeasurements) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onGnssMeasurementsReceived(event);
-                        }
+                        mListeners.onGnssMeasurementsReceived(event);
                     }
                 }
 
                 @Override
                 public void onStatusChanged(int status) {
                     if (mLogMeasurements) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onGnssMeasurementsStatusChanged(status);
-                        }
+                        mListeners.onGnssMeasurementsStatusChanged(status);
                     }
                 }
             };
@@ -142,18 +131,14 @@ public class MeasurementProvider {
                 @Override
                 public void onGnssNavigationMessageReceived(GnssNavigationMessage event) {
                     if (mLogNavigationMessages) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onGnssNavigationMessageReceived(event);
-                        }
+                        mListeners.onGnssNavigationMessageReceived(event);
                     }
                 }
 
                 @Override
                 public void onStatusChanged(int status) {
                     if (mLogNavigationMessages) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onGnssNavigationMessageStatusChanged(status);
-                        }
+                        mListeners.onGnssNavigationMessageStatusChanged(status);
                     }
                 }
             };
@@ -171,9 +156,7 @@ public class MeasurementProvider {
 
                 @Override
                 public void onSatelliteStatusChanged(GnssStatus status) {
-                    for (MeasurementListener logger : mListeners) {
-                        logger.onGnssStatusChanged(status);
-                    }
+                    mListeners.onGnssStatusChanged(status);
                 }
             };
 
@@ -182,17 +165,16 @@ public class MeasurementProvider {
                 @Override
                 public void onNmeaMessage(String s, long l) {
                     if (mLogNmeas) {
-                        for (MeasurementListener logger : mListeners) {
-                            logger.onNmeaReceived(l, s);
-                        }
+                        mListeners.onNmeaReceived(l, s);
                     }
                 }
             };
 
-    public MeasurementProvider(Context context, GoogleApiClient client, MeasurementListener... loggers) {
-        this.mListeners = Arrays.asList(loggers);
+    public MeasurementProvider(Context context, GoogleApiClient client, MainLogger loggers) {
+        this.mListeners = loggers;
         mLocationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         this.mGoogleApiClient = client;
+        MeasurementProvider._instance = this;
     }
 
     public LocationManager getLocationManager() {
@@ -323,6 +305,7 @@ public class MeasurementProvider {
     }
 
     public void registerNmea() {
+        mListeners.count = 0;
         logRegistration("Nmea", mLocationManager.addNmeaListener(nmeaListener));
     }
 
@@ -347,8 +330,6 @@ public class MeasurementProvider {
     }
 
     private void logRegistration(String listener, boolean result) {
-        for (MeasurementListener logger : mListeners) {
-            logger.onListenerRegistration(listener, result);
-        }
+        mListeners.onListenerRegistration(listener, result);
     }
 }

@@ -1,19 +1,34 @@
 package com.skca.panoptes.ui.main;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.DocumentsContract;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.annotation.NonNull;
 import androidx.core.app.ShareCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
+import com.google.android.material.snackbar.Snackbar;
+import com.skca.panoptes.MainActivity;
 import com.skca.panoptes.databinding.FragmentMainBinding;
+import com.skca.panoptes.hardware.DataManager;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -45,12 +60,17 @@ public class PlaceholderFragment extends Fragment {
         }
         pageViewModel.setIndex(index);
 
-        new Timer().scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                pageViewModel.refresh();
-            }
-        }, 0, 1000);
+        pageViewModel.refresh();
+        if (index == 3) {
+            new Timer().scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    if (!MainActivity.recorder.isRecording) return;
+                    pageViewModel.refresh();
+                    if (binding != null) binding.scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+                }
+            }, 0, 1000);
+        }
     }
 
     @Override
@@ -69,17 +89,18 @@ public class PlaceholderFragment extends Fragment {
             }
         });
 
-        textView.setOnLongClickListener(v -> {
-            Activity a = getActivity();
-            if (a == null) return true;
-
-            new ShareCompat.IntentBuilder(a)
-                .setText(((TextView) v).getText())
-                .setType("text/plain")
-                .setChooserTitle("Share data")
-                .startChooser();
-            return true;
-        });
+        if (getArguments().getInt(ARG_SECTION_NUMBER) == 1) {
+            textView.setOnLongClickListener(v -> {
+                Activity a = getActivity();
+                if (a == null) return true;
+                new ShareCompat.IntentBuilder(a)
+                        .setText(((TextView) v).getText())
+                        .setType("text/plain")
+                        .setChooserTitle("Share data")
+                        .startChooser();
+                return true;
+            });
+        }
 
         return root;
     }

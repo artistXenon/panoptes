@@ -47,7 +47,7 @@ public class DataManager {
 
         for (Sensor s : deviceSensors) {
             // The name is guaranteed to be unique for a particular sensor type.
-            sensorMap.put("[" + s.getStringType() + "] " + s.getName(), new SensorWrapper(s));
+            sensorMap.put("[" + s.getStringType().substring(15) + "] " + s.getName(), new SensorWrapper(s));
         }
 
         SensorsInfo.loadSensors(sensorMap);
@@ -56,7 +56,8 @@ public class DataManager {
     public void listenSensors(Recorder r) {
         for (SensorWrapper e : SensorsInfo.getSensorMap().values()) {
             if (!e.listen) continue;
-            sensorManager.registerListener(r, e.getBaseSensor(), SensorManager.SENSOR_DELAY_NORMAL);
+            e.recordCount = 0;
+            sensorManager.registerListener(r, e.getBaseSensor(), e.delay > 0 ? e.delay : SensorManager.SENSOR_DELAY_NORMAL);
         }
     }
 

@@ -11,6 +11,8 @@ import android.location.Location;
 import android.location.LocationProvider;
 import android.os.Bundle;
 import android.util.Log;
+import com.skca.panoptes.helper.Recorder;
+
 import java.text.DecimalFormat;
 
 /**
@@ -21,7 +23,9 @@ public class MainLogger implements MeasurementListener {
 
     private static final int USED_COLOR = Color.rgb(0x4a, 0x5f, 0x70);
 
-    public MainLogger() {}
+    public long count = 0;
+    private Recorder recorder;
+    public MainLogger(Recorder r) { this.recorder = r; }
 
     @Override
     public void onProviderEnabled(String provider) {
@@ -230,6 +234,7 @@ public class MainLogger implements MeasurementListener {
 
     @Override
     public void onNmeaReceived(long timestamp, String s) {
+        recorder.counter.put("NMEA", recorder.counter.getOrDefault("NMEA", 0L) + 1);
         logNmeaEvent(String.format("onNmeaReceived: timestamp=%d, %s", timestamp, s));
     }
 
@@ -261,8 +266,7 @@ public class MainLogger implements MeasurementListener {
     }
 
     private void logText(String tag, String text, int color) {
-        //TODO: LOG TEXT
-        Log.i("LOG-GNSS", text);
+        recorder.record(text.trim());
     }
 
     private String locationStatusToString(int status) {
